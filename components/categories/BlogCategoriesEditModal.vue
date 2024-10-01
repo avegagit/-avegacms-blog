@@ -1,5 +1,5 @@
 <template>
-  <CmsBaseModal title="Создание категории">
+  <CmsBaseModal :title="category.title">
     <CmsForm
       v-bind="{ state, schema }"
       ref="formRef"
@@ -16,8 +16,8 @@
         </CmsFormGroup>
       </div>
 
-      <CmsButton type="submit" title="Создать" :loading="loading">
-        Создать
+      <CmsButton type="submit" title="Сохранить" :loading="loading">
+        Сохранить
       </CmsButton>
     </CmsForm>
   </CmsBaseModal>
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { object, string } from "yup";
 import slugify from "voca/slugify";
+import type { BlogCategory } from "#module/blog/types";
 import type { Form, FormSubmitEvent } from "#ui/types";
 
 type State = {
@@ -34,7 +35,10 @@ type State = {
 };
 
 const emits = defineEmits<{
-  (e: "create", id: number): void;
+  (e: "update"): void;
+}>();
+const props = defineProps<{
+  category: BlogCategory;
 }>();
 
 const api = useApi();
@@ -42,7 +46,10 @@ const toast = useToast();
 const modal = useModal();
 
 const loading = shallowRef(false);
-const state = ref<Partial<State>>({});
+const state = ref<Partial<State>>({
+  title: props.category.title,
+  slug: props.category.slug,
+});
 const schema = object({
   title: string().required().max(250).label("Название категории"),
   slug: string().required().max(250).label("Slug"),
@@ -54,16 +61,16 @@ const onSubmit = async (values: FormSubmitEvent<State>) => {
     loading.value = true;
 
     try {
-      const r = await api<{ data: { id: number } }>("admin/blog/category", {
-        method: "POST",
+      await api(`admin/blog/category/${props.category.id}`, {
+        method: "PUT",
         body: values.data,
       });
 
       toast.add({
-        title: "Категория успешно создана.",
+        title: "Категория успешно обновлена.",
         color: "green",
       });
-      emits("create", r.data.id);
+      emits("update");
       modal.close();
     } catch (err) {
       loading.value = false;

@@ -1,5 +1,5 @@
 <template>
-  <CmsBaseModal title="Создание категории">
+  <CmsBaseModal title="Создание тега">
     <CmsForm
       v-bind="{ state, schema }"
       ref="formRef"
@@ -7,8 +7,8 @@
       @submit="onSubmit"
     >
       <div class="space-y-4">
-        <CmsFormGroup name="title" label="Название категории" required>
-          <CmsInput v-model="state.title" :disabled="loading" />
+        <CmsFormGroup name="name" label="Название" required>
+          <CmsInput v-model="state.name" :disabled="loading" />
         </CmsFormGroup>
 
         <CmsFormGroup name="slug" label="slug" required>
@@ -29,7 +29,7 @@ import slugify from "voca/slugify";
 import type { Form, FormSubmitEvent } from "#ui/types";
 
 type State = {
-  title: string;
+  name: string;
   slug: string;
 };
 
@@ -44,8 +44,7 @@ const modal = useModal();
 const loading = shallowRef(false);
 const state = ref<Partial<State>>({});
 const schema = object({
-  title: string().required().max(250).label("Название категории"),
-  slug: string().required().max(250).label("Slug"),
+  name: string().required().label("Название"),
 });
 const formRef = ref<Form<State>>();
 
@@ -54,13 +53,13 @@ const onSubmit = async (values: FormSubmitEvent<State>) => {
     loading.value = true;
 
     try {
-      const r = await api<{ data: { id: number } }>("admin/blog/category", {
+      const r = await api<{ data: { id: number } }>("admin/blog/tags", {
         method: "POST",
         body: values.data,
       });
 
       toast.add({
-        title: "Категория успешно создана.",
+        title: "Тег успешно создана.",
         color: "green",
       });
       emits("create", r.data.id);
@@ -88,7 +87,7 @@ const onSubmit = async (values: FormSubmitEvent<State>) => {
 };
 
 watch(
-  () => state.value.title,
+  () => state.value.name,
   (value) => {
     state.value.slug = slugify(value);
   }

@@ -1,5 +1,5 @@
 <template>
-  <CmsBaseModal title="Создание категории">
+  <CmsBaseModal :title="tag.name">
     <CmsForm
       v-bind="{ state, schema }"
       ref="formRef"
@@ -7,34 +7,43 @@
       @submit="onSubmit"
     >
       <div class="space-y-4">
-        <CmsFormGroup name="title" label="Название категории" required>
-          <CmsInput v-model="state.title" :disabled="loading" />
+        <CmsFormGroup name="name" label="Название" required>
+          <CmsInput v-model="state.name" :disabled="loading" />
         </CmsFormGroup>
 
         <CmsFormGroup name="slug" label="slug" required>
           <CmsInput v-model="state.slug" :disabled="loading" />
         </CmsFormGroup>
+
+        <CmsFormGroup name="active" label="Активен">
+          <CmsToggle v-model="state.active" :disabled="loading" />
+        </CmsFormGroup>
       </div>
 
-      <CmsButton type="submit" title="Создать" :loading="loading">
-        Создать
+      <CmsButton type="submit" title="Сохранить" :loading="loading">
+        Сохранить
       </CmsButton>
     </CmsForm>
   </CmsBaseModal>
 </template>
 
 <script setup lang="ts">
-import { object, string } from "yup";
+import { object, string, boolean } from "yup";
 import slugify from "voca/slugify";
+import type { BlogTag } from "#module/blog/types";
 import type { Form, FormSubmitEvent } from "#ui/types";
 
 type State = {
-  title: string;
+  name: string;
   slug: string;
+  active: boolean;
 };
 
 const emits = defineEmits<{
-  (e: "create", id: number): void;
+  (e: "update"): void;
+}>();
+const props = defineProps<{
+  tag: BlogTag;
 }>();
 
 const api = useApi();
@@ -42,10 +51,15 @@ const toast = useToast();
 const modal = useModal();
 
 const loading = shallowRef(false);
-const state = ref<Partial<State>>({});
+const state = ref<Partial<State>>({
+  name: props.tag.name,
+  slug: props.tag.slug,
+  active: props.tag.active,
+});
 const schema = object({
-  title: string().required().max(250).label("Название категории"),
+  name: string().required().max(250).label("Название категории"),
   slug: string().required().max(250).label("Slug"),
+  active: boolean().label("Активен"),
 });
 const formRef = ref<Form<State>>();
 
@@ -54,16 +68,16 @@ const onSubmit = async (values: FormSubmitEvent<State>) => {
     loading.value = true;
 
     try {
-      const r = await api<{ data: { id: number } }>("admin/blog/category", {
-        method: "POST",
+      await api(`admin/blog/tags/${props.tag.id}`, {
+        method: "PUT",
         body: values.data,
       });
 
       toast.add({
-        title: "Категория успешно создана.",
+        title: "Категория успешно обновлена.",
         color: "green",
       });
-      emits("create", r.data.id);
+      emits("update");
       modal.close();
     } catch (err) {
       loading.value = false;
@@ -88,7 +102,7 @@ const onSubmit = async (values: FormSubmitEvent<State>) => {
 };
 
 watch(
-  () => state.value.title,
+  () => state.value.name,
   (value) => {
     state.value.slug = slugify(value);
   }
